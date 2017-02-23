@@ -1,0 +1,12 @@
+{
+   "TableName": "uistsplit",
+   "ScanIndexForward": "false",
+   "Limit": 1,
+   "IndexName": "role_id-timestamp-index",
+   "KeyConditionExpression": "role_id = :v1",
+   "ExpressionAttributeValues": {
+       ":v1": {
+           "S": "$input.params('dbjson')"
+       }
+   }
+}

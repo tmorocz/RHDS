@@ -1,0 +1,34 @@
+{
+    "dbjson": [
+        #foreach($elem in $inputRoot.Items) {
+            "st1_humidity": "$elem.st1_humidity.S",
+            "st2_humidity": "$elem.st2_humidity.S",
+            "st3_humidity": "$elem.st3_humidity.S",
+            "st4_humidity": "$elem.st4_humidity.S",
+            "st1_ambient": "$elem.st1_ambient.S",
+            "st2_ambient": "$elem.st2_ambient.S",
+            "st3_ambient": "$elem.st3_ambient.S",
+            "st4_ambient": "$elem.st4_ambient.S",
+            "st1_TS_EST": "$elem.st1_TS_EST.S",
+            "st2_TS_EST": "$elem.st2_TS_EST.S",
+            "st3_TS_EST": "$elem.st3_TS_EST.S",
+            "st4_TS_EST": "$elem.st4_TS_EST.S",
+            "we1_windChill": "$elem.we1_windChill.S",
+            "we1_temperature": "$elem.we1_temperature.S",
+            "we1_humidity": "$elem.we1_humidity.S",
+            "we1_windUnits": "$elem.we1_windUnits.S",
+            "we1_pressure": "$elem.we1_pressure.S",
+            "we1_windDirection": "$elem.we1_windDirection.S",
+            "we1_windSpeed": "$elem.we1_windSpeed.S",
+            "rt_hl_kwh": "$elem.rt_hl_kwh.S",
+            "rt_hl_bt": "$elem.rt_hl_bt.S",
+            "rt_hl_carbon": "$elem.rt_hl_carbon.S",
+            "rt_hl_carbon_yr": "$elem.rt_hl_carbon_yr.S",
+            "cooling_periods": "$elem.cooling_periods.N",
+            "heating_periods": "$elem.heating_periods.N",
+            
+            "timestamp": "$elem.timestamp.S"
+        }#if($foreach.hasNext),#end
+	#end
+    ]
+}
