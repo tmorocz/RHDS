@@ -1,0 +1,37 @@
+    private byte[] getLastWeatherBytes() {
+    	MongoClient mongo = StaticMongo.getInstance(s_logger);
+		DB db = new DB(mongo, MONGO_READINGS_DB);
+		JSONObject document = new JSONObject();
+		
+		//public Cursor aggregate(List<? extends DBObject> pipeline, AggregationOptions options)
+		//DBCursor lastThreePolls = new DBCursor(db.getCollection(SENSOR_COLLECTION), DBObject query, DBObject fields, ReadPreference readPreference);
+			
+		BasicDBObject queryParams = new BasicDBObject();
+		queryParams.append("timestamp", -1);
+		DBCursor polls = db.getCollection(MONGO_WEATHER_COLLECTION).find().sort( queryParams ).limit(1);
+		
+		//get the most recent poll from the collection
+		int counter = 0;
+		String output = "";
+		int numPolls = 1;
+		while(polls.hasNext() && counter++<numPolls) {
+			DBObject obj = polls.next();
+			
+			try {
+				document.put("weather", "ottawa");
+	        	document.put("timestamp", (obj.get("timestamp")).toString());
+	        	document.put("temperature", (obj.get("temperature")).toString());
+	        	//document.put("windChill", (obj.get("windChill")).toString());
+	        	document.put("pressure", (obj.get("pressure")).toString());
+	        	document.put("humidity", (obj.get("humidity")).toString());
+	        	document.put("windSpeed", (obj.get("windSpeed")).toString());
+	        	document.put("windUnits", (obj.get("windUnits")).toString());
+	        	document.put("windDirection", (obj.get("windDirection")).toString());
+	        	
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+		}
+
+		return document.toString().getBytes(StandardCharsets.UTF_8);
+	}

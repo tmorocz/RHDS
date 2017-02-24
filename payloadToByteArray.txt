@@ -1,0 +1,29 @@
+    /**
+     * @author Dan Morocz
+     * @param payload Payload to convert to JSON object as a byte[].
+     * @return payload in the form of a JSON Object, cast to a byte[].
+     */
+    private static byte[] payloadToByteArray(KuraPayload payload) {
+		
+		JSONObject obj = new JSONObject();
+
+        try {
+			//obj.put("Timestamp", payload.getMetric("Timestamp"));
+			//obj.put("Type", payload.getMetric("Type"));
+			//obj.put("Humidity", payload.getMetric("Humidity"));
+			//obj.put("Temperature", payload.getMetric("Ambient"));
+			//obj.put("Device_id", payload.getMetric("Device_id"));
+			obj.put(SensorDocument.DEVICE_TIME_MONGO_NAME, payload.getMetric(SensorDocument.DEVICE_TIME_KURA_NAME));
+			obj.put(SensorDocument.DEVICE_TYPE_MONGO_NAME, payload.getMetric(SensorDocument.DEVICE_TYPE_KURA_NAME));
+			obj.put(SensorDocument.DEVICE_HUMIDITY_MONGO_NAME, payload.getMetric(SensorDocument.DEVICE_HUMIDITY_KURA_NAME));
+			obj.put(SensorDocument.DEVICE_TEMP_MONGO_NAME, payload.getMetric(SensorDocument.DEVICE_TEMP_KURA_NAME));
+			obj.put(SensorDocument.DEVICE_ID_MONGO_NAME, payload.getMetric(SensorDocument.DEVICE_ID_KURA_NAME));
+			obj.put(SensorDocument.MQTT_SENSORTAG_NAME, "rhds");
+			//obj.put("Ambient", payload.getMetric("Ambient"));
+			//obj.put("Target", payload.getMetric("Target"));
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+
+		return obj.toString().getBytes(StandardCharsets.UTF_8);
+    }

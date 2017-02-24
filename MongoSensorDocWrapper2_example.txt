@@ -1,0 +1,123 @@
+package org.eclipse.kura.example.ble.tisensortag;
+
+import java.net.UnknownHostException;
+import java.util.Date;
+
+import org.eclipse.kura.message.KuraPayload;
+import org.slf4j.Logger;
+
+import com.mongodb.BasicDBObjectBuilder;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+
+
+public class MongoSensorDocWrapper2_example {
+	private static Logger s_logger = null;
+	int idCode;
+	private static MongoClient mongo = null;
+	DB db = null;
+	
+	public static final String DB_name = "readings";
+
+	
+	public MongoSensorDocWrapper2_example(Logger newLogger) {
+	}
+
+	private void connectMongo() {
+		mongo = getMongoClient();
+		db = getDBFromMongo(mongo);
+	}
+	
+	//For testing, build a sample KuraPayload and publish it to the MongoDB specified in ConnectionInfo
+	public void publish() {
+		connectMongo();
+		try {
+			publishMongo(mongo, db, buildSensorKuraPayload());
+		}
+		catch(UnknownHostException uhe) {
+			System.out.println("Unknown Host");
+		}
+		destroyMongoInstance();
+	}
+
+	
+	public void publish(KuraPayload payload) {
+		connectMongo();
+		try {
+			publishMongo(mongo, db, payload);
+		}
+		catch(UnknownHostException uhe) {
+			System.out.println("Unknown Host");
+		}
+		destroyMongoInstance();
+	}
+	private void destroyMongoInstance() {
+		if(null != mongo) {
+			mongo.close();
+		}
+		mongo=null;
+	}	
+
+	private MongoClient getMongoClient() {
+		
+		MongoClient client = null;
+		
+		try {
+			MongoClientURI uri = new MongoClientURI("mongodb://localhost:27017");
+			client = new MongoClient(uri);
+		} catch (Exception e) {
+		}
+		return client;
+	}
+	
+	private DB getDBFromMongo(MongoClient mongo) {
+		return new DB(mongo, ConnectionInfo.DEVICE_DB_NAME);
+	}
+	
+	// Built for publishing to MongoDB
+	public void publishMongo(MongoClient mongo, DB database, KuraPayload payload) throws UnknownHostException {
+		SensorDocument reading = createSensorDoc(payload);
+		DBObject doc = createDBObject(reading);
+		DBCollection collection = database.getCollection(ConnectionInfo.SENSOR_COLLECTION);
+		collection.save(doc);
+	}
+
+	private DBObject createDBObject(SensorDocument reading) {
+		BasicDBObjectBuilder docBuilder = BasicDBObjectBuilder.start();
+		docBuilder.append(SensorDocument.DEVICE_ID_MONGO_NAME, reading.getDevice());
+		docBuilder.append(SensorDocument.DEVICE_TIME_MONGO_NAME, reading.getTimestamp());
+		docBuilder.append(SensorDocument.DEVICE_TEMP_MONGO_NAME, reading.getTemperature());
+		docBuilder.append(SensorDocument.DEVICE_HUMIDITY_MONGO_NAME, reading.getHumidity());
+		return docBuilder.get();
+	}
+
+	//Build a SensorDocument from a KuraPayload
+	private SensorDocument createSensorDoc(KuraPayload payload) {
+		
+		SensorDocument s = new SensorDocument();
+		s.setDevice((String)payload.getMetric(SensorDocument.DEVICE_ID_KURA_NAME));
+		s.setTimestamp((String)payload.getMetric(SensorDocument.DEVICE_TIME_KURA_NAME));
+		try {
+			s.setTemperature((String)payload.getMetric(SensorDocument.DEVICE_TEMP_KURA_NAME));
+		} catch(NumberFormatException nfe) {
+			nfe.printStackTrace();
+		}
+		s.setHumidity((String)payload.getMetric(SensorDocument.DEVICE_HUMIDITY_KURA_NAME));
+		return s;
+	}
+
+	//Build a default, testing KuraPayload
+	private KuraPayload buildSensorKuraPayload() {
+		KuraPayload payload = new KuraPayload();
+		payload.setTimestamp(new Date());
+		payload.addMetric(SensorDocument.DEVICE_ID_MONGO_NAME, "MONGO " + idCode);
+		payload.addMetric(SensorDocument.DEVICE_TIME_MONGO_NAME, ""+System.currentTimeMillis());
+		payload.addMetric(SensorDocument.DEVICE_TEMP_MONGO_NAME, "21.0");
+		payload.addMetric(SensorDocument.DEVICE_HUMIDITY_MONGO_NAME, "50");
+		return payload;
+	}
+}

@@ -1,0 +1,32 @@
+    /**
+     * @author Dan Morocz
+     * @return byte[] of the most recent item in the dbjson collection.
+     */
+    private byte[] getLastDBJSONBytes() {
+    	MongoClient mongo = StaticMongo.getInstance(s_logger);
+		DB db = new DB(mongo, MONGO_READINGS_DB);
+		JSONObject document = new JSONObject();
+		
+		//public Cursor aggregate(List<? extends DBObject> pipeline, AggregationOptions options)
+		//DBCursor lastThreePolls = new DBCursor(db.getCollection(SENSOR_COLLECTION), DBObject query, DBObject fields, ReadPreference readPreference);
+			
+		BasicDBObject queryParams = new BasicDBObject();
+		//queryParams.append(MONGO_INSERT_TIME_KEY, -1);
+		//DBCursor polls = db.getCollection(MONGO_DBJSON_COLLECTION).find().sort( queryParams );
+		queryParams.append("$natural", -1);
+		DBCursor polls = db.getCollection(MONGO_DBJSON_COLLECTION).find().sort( queryParams ).limit(1);	
+		
+		//get the most recent poll from the collection
+		int counter = 0;
+		String output = "";
+		int numPolls = 1;
+		if(polls.hasNext()){
+			DBObject obj = polls.next();
+			obj.put("_id", "blank"); //clear out field causing issues with AWS API
+			String retString = obj.toString();
+			s_logger.info(retString);
+			return obj.toString().getBytes(StandardCharsets.UTF_8);
+		}
+	
+		return null;
+	};
