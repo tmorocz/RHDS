@@ -1,0 +1,344 @@
+package com.eneristics.test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.input.SAXBuilder;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
+
+public class FetchInsertMongo {
+
+	public static final String WEATHER_URL = "http://dd.weatheroffice.ec.gc.ca/citypage_weather/xml/ON/s0000430_e.xml";
+	
+	public static final String CURRENT_CONDITIONS_KEY = "currentConditions";
+	public static final String TEMP_UNITS_KEY = "units";
+	public static final String NOT_USED = "not used";
+	
+	public static final String TEMPERATURE_KEY = "temperature";
+	public static final String WINDCHILL_KEY = "windChill";
+	public static final String PRESSURE_KEY = "pressure";
+	public static final String HUMIDITY_KEY = "relativeHumidity";
+	public static final String WIND_KEY = "wind";
+	public static final String WIND_SPEED_KEY = "speed";
+	public static final String WIND_DIRECTION_KEY = "direction";
+	
+	public static final String DEFAULT_TEMPERATURE = "";
+	public static final String DEFAULT_WINDCHILL = "";
+	public static final String DEFAULT_PRESSURE = "";
+	public static final String DEFAULT_HUMIDITY = "";
+	public static final String DEFAULT_WINDSPEED = "";
+	public static final String DEFAULT_WINDSPEED_UNITS = "";
+	public static final String DEFAULT_WIND_DIRECTION = "";
+	
+	private static SAXBuilder saxBuilder = null;
+	
+	public static final String USER = "testremote";
+	public static final String PASS = "test";
+	//public static final String HOST = "192.168.0.17";
+	public static final String HOST = "localhost";
+	public static final int PORT = 27017;
+	public static final String DEVICE_DB_NAME = "readings";
+	public static final String SENSOR_COLLECTION = "sensortags";
+	public static final String WEATHER_COLLECTION = "weather";
+
+	private static final String MONGO_TIMESTAMP = "timestamp"; 
+	private static final String MONGO_TEMPERATURE="temperature"; 
+	private static final String MONGO_WIND_CHILL="windChill";
+	private static final String MONGO_PRESSURE="pressure";
+	private static final String MONGO_HUMIDITY="humidity";
+	private static final String MONGO_WIND_SPEED="windSpeed";
+	private static final String MONGO_WIND_UNITS="windUnits";
+	private static final String MONGO_WIND_DIRECTION="windDirection";
+	
+	private static MongoClient mongo = null;
+	private static DB db = null;
+	
+	public static void main(String [] args) {
+		connectMongo();
+		
+		DBCollection collection= db.getCollection(WEATHER_COLLECTION);
+		
+		putWeatherDocMongo(collection);
+		
+		mongo.close();
+	}
+	
+	private static void buildSAX() {
+		if( null == saxBuilder ) 
+			saxBuilder = new SAXBuilder();
+	}
+	
+	private static void connectMongo() {
+		mongo = getMongoClient();
+		db = getDBFromMongo(mongo);
+	}
+	
+	private static BasicDBObject buildDocument(String timestamp, String temperature, String windChill, String pressure, String humidity, String windSpeed, 
+												String windUnits, String windDirection) {
+
+		BasicDBObject document = new BasicDBObject();
+		document.put(MONGO_TIMESTAMP, timestamp); 
+		document.put(MONGO_TEMPERATURE, temperature); 
+		document.put(MONGO_WIND_CHILL, windChill);
+		document.put(MONGO_PRESSURE, pressure);
+		document.put(MONGO_HUMIDITY, humidity);
+		document.put(MONGO_WIND_SPEED, windSpeed);
+		document.put(MONGO_WIND_UNITS, windUnits);
+		document.put(MONGO_WIND_DIRECTION, windDirection);
+		
+		return document;
+	}
+	
+	private static MongoClient getMongoClient() {
+		
+		ServerAddress address = new ServerAddress(HOST, PORT);
+		List<ServerAddress> addList = new ArrayList<ServerAddress>();
+		addList.add(address);
+		
+		MongoCredential	cred = MongoCredential.createCredential(USER, DEVICE_DB_NAME, PASS.toCharArray());
+		List<MongoCredential> credList = new ArrayList<MongoCredential>();
+		credList.add(cred);
+		
+		return new MongoClient(addList);//, credList);
+	}
+	
+	private static DB getDBFromMongo(MongoClient mongo) {
+		return new DB(mongo, DEVICE_DB_NAME);
+	}
+	
+	private static void printMongo(DBCollection collection) {
+		DBCursor allCursor = collection.find();
+		
+		while(allCursor.hasNext()) {
+			System.out.println(allCursor.next().toString());
+		}
+	}
+	
+	//temperature windChill pressure humidity windSpeed windUnits windDirection
+	public static void putWeatherDocMongo(DBCollection collection) {
+			
+		buildSAX();
+		String temperature = getTemp(saxBuilder); 
+		String windChill = getWindChill(saxBuilder);
+		String pressure = getPressure(saxBuilder);
+		String humidity = getHumidity(saxBuilder);
+		String windSpeed = getWindSpeed(saxBuilder);
+		String windUnits = getWindSpeedUnits(saxBuilder);
+		String windDirection = getWindDirection(saxBuilder);
+		
+		collection.insert(buildDocument(""+System.currentTimeMillis(), temperature, windChill, pressure, humidity, windSpeed, 
+			windUnits, windDirection));
+	}
+	
+	//get the temperature
+	private static String getTemp(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the temp Element from current conditions
+			Element tempElement = currentConditions.getChild(TEMPERATURE_KEY);
+			
+			//get the actual temp from the temp element
+			try {
+				return tempElement.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Temperature is not a floating point number.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_TEMPERATURE;
+	}
+	
+	//get the windchill
+	private static String getWindChill(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the windchill Element from current conditions
+			Element tempElement = currentConditions.getChild(WINDCHILL_KEY);
+			
+			//get the actual windchill from the windchill element
+			try {
+				return tempElement.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Windchill is not an integer value.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_WINDCHILL;
+	}
+	
+	//get the pressure
+	private static String getPressure(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the pressure Element from current conditions
+			Element tempElement = currentConditions.getChild(PRESSURE_KEY);
+			
+			//get the actual pressure from the pressure element
+			try {
+				return tempElement.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Pressure is not a floating point number.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_PRESSURE;
+	}
+	
+	//get the relative humidity
+	private static String getHumidity(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the humidity Element from current conditions
+			Element tempElement = currentConditions.getChild(HUMIDITY_KEY);
+			
+			//get the actual humidity from the humidity element
+			try {
+				return tempElement.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Humidity is not an integer value.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_HUMIDITY;
+	}
+	
+	//get the windspeed
+	private static String getWindSpeed(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the humidity Element from current conditions
+			Element wind = currentConditions.getChild(WIND_KEY);
+			Element windSpeed = wind.getChild(WIND_SPEED_KEY);
+			String windSpdUnits = windSpeed.getAttributeValue("units");
+			
+			//get the actual humidity from the humidity element
+			try {
+				return windSpeed.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Wind speed is not an integer value.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_WINDSPEED;
+	}
+	
+	//get the windspeed units
+	private static String getWindSpeedUnits(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the humidity Element from current conditions
+			Element wind = currentConditions.getChild(WIND_KEY);
+			Element windSpeed = wind.getChild(WIND_SPEED_KEY);
+			String windSpdUnits = windSpeed.getAttributeValue("units");
+			
+			//get the actual humidity from the humidity element
+			try {
+				return windSpdUnits;
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Wind speed is not an integer value.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_WINDSPEED_UNITS;
+	}
+	
+	//get the wind direction
+	private static String getWindDirection(SAXBuilder saxBuilder) {
+		buildSAX();
+		try {
+			Document document = (Document) saxBuilder.build(WEATHER_URL);
+			Element rootNode = document.getRootElement();
+			
+			Element currentConditions = rootNode.getChild(CURRENT_CONDITIONS_KEY);
+			
+			//get the humidity Element from current conditions
+			Element wind = currentConditions.getChild(WIND_KEY);
+			Element windDirection = wind.getChild(WIND_DIRECTION_KEY);
+			
+			//get the actual humidity from the humidity element
+			try {
+				return windDirection.getValue();
+				//System.out.println("ACTUAL TEMPERATURE: " + temperature + tempElement.getAttributeValue(TEMP_UNITS_KEY));
+			} 
+			catch(NumberFormatException nfe) {
+				System.out.println("Wind direction is not available.");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return DEFAULT_WIND_DIRECTION;
+	}
+}
